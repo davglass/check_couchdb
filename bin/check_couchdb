@@ -1,0 +1,79 @@
+#!/usr/bin/env node
+/*
+Copyright (c) 2013, Yahoo! Inc. All rights reserved.
+Code licensed under the BSD License provided.
+*/
+
+var nopt = require('nopt'),
+    http = require('http'),
+    known = {
+        host: String,
+        port: Number,
+        ssl: Boolean,
+        help: Boolean,
+        version: Boolean,
+    },
+    shorts = {
+        'H': ['--host'],
+        'p': ['--port'],
+        'h': ['--help'],
+        'v': ['--version']
+    },
+    parsed = nopt(known, shorts, process.argv, 2);
+
+parsed.host = parsed.host || '127.0.0.1';
+parsed.port = parsed.port || 5984;
+
+if (parsed.ssl) {
+    http = require('https');
+}
+
+if (parsed.help) {
+    console.log('check_couchdb@', require('../package.json').version);
+    console.log('');
+    console.log('   -H/--host <hostname>    The host to check');
+    console.log('   -p/--port <port>        The port to check');
+    console.log('   --ssl                   Use SSL to connect');
+    console.log('   -v/--version            Print version');
+    console.log('   -h/--help               Print this stuff');
+    process.exit();
+}
+
+if (parsed.version) {
+    console.log(require('../package.json').version);
+    process.exit();
+}
+
+var handler = function(json) {
+    if (!json || 'error' in json) {
+        console.log('ERROR:', json.error);
+        process.exit(2);
+    }
+    
+    if (json.couchdb === 'Welcome') {
+        console.log('OK:', 'Couch (' + json.version + ') is up');
+        process.exit(0);
+    }
+
+    console.log('Uknown:', 'Unknown status: ' + JSON.stringify(json));
+    process.exit(3);
+};
+
+http.get({
+    hostname: parsed.host,
+    port: parsed.port,
+    path: '/'
+}, function(res) {
+    var data = '';
+    res.on('data', function(c) {
+        data += c;
+    });
+
+    res.on('end', function() {
+        handler(JSON.parse(data));
+    });
+}).on('error', function(e) {
+    handler({
+        error: e.code
+    });
+});
