@@ -1,10 +1,10 @@
 check_couchdb
--------------
+=============
 
 Very simple Nagios check script for CouchDB
 
 Install
-=======
+-------
 
 `npm -g i check_couchdb`
 
